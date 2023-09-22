@@ -1,0 +1,1118 @@
+﻿@using Microsoft.AspNet.Identity
+@using RFID_TMS.Models.Extensions;
+@{
+    ViewBag.Title = @ViewBag.submenu;
+    ViewBag.img_tire = "trailer.jpeg";
+}
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+}
+
+<style>
+    #TblDataSetupVehicle_processing {
+        /*margin-top:50px;*/
+        position: fixed;
+        z-index: 999;
+    }
+</style>
+
+<div id="content-wrapper">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <img src="~/img/32/@ViewBag.menu_icon" width="20px" />
+                        <a href="#">@ViewBag.menu</a>
+                    </li>
+                    <li class="breadcrumb-item active">@ViewBag.submenu</li>
+                </ol>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-body">
+                <form>
+                    <div class="table-responsive">
+                        <table id="TblDataSetupVehicle" class="tableReport table table-bordered table-hover table-striped" style="font-size:smaller;width:100% !important;"></table>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="card-footer small text-muted">Updated Today @DateTime.Now</div>
+    </div>
+</div>
+
+<!-- Save and Edit Modal-->
+<div class="modal fade" id="SetupVehicleModal" tabindex="-1" role="dialog" aria-labelledby="SetupVehicleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="SetupVehicleModalLabel">Add New Fleet</h6>
+                <button type="button" class="close" data-dismiss="modal" onclick="clearData()">×</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md">
+                        <div class="form-group row">
+                            <label for="txtFleetId_SetupFleet" class="col-sm-2 col-form-label">Fleet Id</label>
+                            <div class="col-md">
+                                <input type="text" class="form-control" id="txtFleetId_SetupFleet" placeholder="" maxlength="10"/>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtFleetName_SetupFleet" class="col-sm-2 col-form-label">Name</label>
+                            <div class="col-md">
+                                <input type="text" class="form-control" id="txtFleetName_SetupFleet" placeholder="" maxlength="50"/>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="cboLocationType" class="col-sm-2 col-form-label">Operation Area</label>
+                            <div class="col-md">
+                                <select class="form-control" id="cboLocationType" name="cboLocationType"></select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtFleetDescription_SetupFleet" class="col-sm-2 col-form-label">Description</label>
+                            <div class="col-md">
+                                <input type="text" class="form-control" id="txtFleetDescription_SetupFleet" placeholder="" maxlength="100"/>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div>
+                   <div class="card">
+                       <div class="card-body">
+                           <div class="table-responsive">
+                               <table id="TblEntryDetailSetupVehicle" class="tableReport table table-bordered table-hover table-striped " style="font-size:smaller; width: 100%!important;"></table>
+                           </div>
+                       </div>
+                   </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnAdd" onclick="SaveSetupVehicle(true);">Save</button>
+                <button type="button" class="btn btn-primary" id="btnAddClose" onclick="SaveSetupVehicle(true);" data-dismiss="modal">Save & close</button>
+                <button type="button" class="btn btn-primary" id="btnUpdate" style="display:none;" onclick="SaveSetupVehicle(false);">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="SetupGetFleet" tabindex="-1" role="dialog" aria-labelledby="SetupGetFleetLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="SetupGetFleetLabel">Get Fleet From FDS</h6>
+                <button type="button" class="close" data-dismiss="modal" onclick="clearData()">×</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md">
+                        <div class="form-group row">
+                            <label for="fleet_id" class="col-sm-2 col-form-label">Fleet Id</label>
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" id="fleet_id" placeholder="" maxlength="10" />
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-primary" id="btnGet" onclick="GetFleetFDS();">Search</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="TblGetFleet" class="tableReport table table-bordered table-hover table-striped " style="font-size:smaller; width: 100%!important;"></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary w-25" id="btnOK" onclick="SaveFleetFromFDS();">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    var DateNow = new Date();
+    var dataDetailVehicle = [];
+    var today = new Date(DateNow.getFullYear(), DateNow.getMonth(), DateNow.getDate());
+    var tempIdUser = "";
+    var JudulNotif = "";
+    var Notif = "";   
+    var strWithDateFilter = true;
+    var strDateCreateReal = "";
+    var table;
+    var menu = 'Menu ' + '@ViewBag.submenu';
+    var dataFleetFromFDS = [];
+    var dataOldFleetFromFDS = [];
+
+    
+    $(document).ready(function () {
+
+        $("#fleet_id").on("input", function () {
+            $(this).val($(this).val().toUpperCase());
+        });
+
+        $("#fleet_id").on("keydown", function (event) {
+            if (event.keyCode === 13) {
+                GetFleetFDS();
+            }
+        });
+
+        $('[data-toggle="tooltip"]').tooltip();
+         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            $($.fn.dataTable.tables(true)).DataTable()
+                .columns.adjust();
+         });
+
+        setUserLog(menu);
+        LoaddataSetupFleet();
+        getDataLocationType();
+        GetDataAxis();
+
+    });
+
+    var str1 = "'";
+
+    function getDataExleType() {
+        var select = document.getElementById('cboAxis');
+        var options = '';
+
+        $.ajax({
+            url: "@ViewBag.pathDir"+"Master/getListAxle",
+            data: {},
+            dataType: "json",
+            type: "GET",
+            contentType: 'application/json; charset=utf-8',
+            success: function (dt) {
+                var strdt = dt.data;
+                for (var i = 0; i < strdt.length; i++) {
+                    options += '<option value=' + strdt[i].axis_type + '>' + strdt[i].axis_type_name + '</option>';
+                }
+                $(select).append(options);
+            },
+            error: function (xhr) {
+                 var path = window.location.pathname;
+                 alert("Error : Session Timeout. Please Log In again");
+                 window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+            }
+
+        });
+    }
+
+    function getDataLocationType() {
+        var select = document.getElementById('cboLocationType');
+        var options = '';
+
+        $.ajax({
+            url: "@ViewBag.pathDir"+"Master/getLocationType",
+            data: {},
+            dataType: "json",
+            type: "GET",
+            contentType: 'application/json; charset=utf-8',
+            success: function (dt) {
+                var strdt = dt.data;
+                options += '<option value="0">--Select Operation Area--</option>';
+                for (var i = 0; i < strdt.length; i++) {
+                    options += '<option value=' + strdt[i].location_type_id + '>' + strdt[i].location_type + '</option>';
+                }
+                $(select).append(options);
+            },
+            error: function (xhr) {
+                 var path = window.location.pathname;
+                 alert("Error : Session Timeout. Please Log In again");
+                 window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+            }
+
+        });
+    }
+
+    var status = '';
+    var message = '';
+    function GetFleetFDS() {
+        dataFleetFromFDS = [];
+         if ($('#fleet_id').val() == "") {
+             alertify.warningAlert("Fleet ID cannot Empty");
+         } else {
+             showLoading();
+              $.ajax({
+                url: "@ViewBag.pathDir"+"Master/getFleetFds",
+                data: {fleet_id : $('#fleet_id').val()},
+                dataType: "json",
+                type: "GET",
+                contentType: 'application/json; charset=utf-8',
+                  success: function (dt) {
+                      closeLoad();
+                    status = dt.status;
+                    message = dt.message;
+                    var axis_type = '';
+                      var vehicle_type_id = '';
+                      dataOldFleetFromFDS = dt.data_old;
+                    for (i = 0; i < dt.data_new.length; i++) {
+                        if (dt.data_new[i].vehicle_id.startsWith("TLP") && dt.data_new[i].sort != '0') {
+                            axis_type = '6';
+                            vehicle_type_id = '3';
+                        } else if (dt.data_new[i].vehicle_id.startsWith("DLP") || dt.data_new[i].vehicle_id.startsWith("DLI") && dt.data_new[i].sort != '0') {
+                            axis_type = '4';
+                            vehicle_type_id = '2';
+                        } else if (dt.data_new[i].sort == '0') {
+                            axis_type = '1';
+                            vehicle_type_id = '1';
+                        } else {
+                            axis_type = '0';
+                            vehicle_type_id = '0';
+                        }
+
+                        dataFleetFromFDS.push({ sort: dt.data_new[i].sort, vehicle_id: dt.data_new[i].vehicle_id, axis_type: axis_type, vehicle_type_id: vehicle_type_id,rfid:"0" });
+                    }
+
+                    createDataFleetFromFDS();
+
+                },
+                  error: function (xhr) {
+                      closeLoad();
+                    console.log(xhr);
+                }
+
+              });
+       }
+
+        // dataFleetFromFDS.forEach(item => {
+        //    const vehicle_id = item.vehicle_id;
+        //    if (vehicle_id.startsWith("TLP")) {
+        //        item.axis_type = 3;
+        //    } else if (vehicle_id.startsWith("DLP") || vehicle_id.startsWith("DLI")) {
+        //        item.axis_type = 2;
+        //    } else {
+        //        item.axis_type = 0;
+        //    }
+        //});
+
+
+         console.log(dataFleetFromFDS);
+
+         
+    }
+
+    var dataAxisType = [];
+     function GetDataAxis() {
+          
+          $.ajax({
+                url: "@ViewBag.pathDir"+"Master/getListAxleType",
+                data: {},
+                dataType: "json",
+                type: "GET",
+                contentType: 'application/json; charset=utf-8',
+                success: function (dt) {
+                    //console.log(dt);
+                    for (i = 0; i < dt.data.length; i++) {
+                        dataAxisType.push(dt.data[i]);
+                    }
+                },
+                error: function (xhr) {
+                    console.log(xhr);
+                }
+
+          });
+
+         console.log(dataAxisType);
+             
+     }
+
+
+         
+    
+
+    function clearData() {
+        dataDetailVehicle = [];
+        $("#txtFleetId_SetupFleet").val("");
+        $("#txtFleetName_SetupFleet").val("");
+        $("#txtFleetKM_SetupFleet").val("");
+        $("#txtFleetHM_SetupFleet").val("");
+        $("#txtFleetDescription_SetupFleet").val("");
+        
+    }
+
+    function LoaddataSetupFleet() {
+        var strAxleType = "-";
+        if ($.fn.DataTable.isDataTable('#TblDataSetupVehicle') == true) {
+            $('#TblDataSetupVehicle').DataTable().clear().destroy();
+            $('#TblDataSetupVehicle thead').empty();
+            document.getElementById("TblDataSetupVehicle").deleteTFoot();
+        }
+
+        $.ajax({
+            url: "@ViewBag.pathDir"+"Master/getListFleet",
+            type: "GET",
+            data: {},
+            dataType :"json",
+            contentType: 'application/json; charset=utf-8',
+            success: function (res) {
+                if (res.Flag == false) {
+                    var path = window.location.pathname;
+                     alert(res.Message + " Please Log In again");
+                      window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+                } else {
+                        var table = $('#TblDataSetupVehicle').DataTable({
+                        "data": res.data,
+                        "columns": [
+                            { title: "Fleet Id", data: "fleet_id", name: "fleet_id", width: '100px' },
+                            { title: "Fleet Name", data: "fleet_name", name: "fleet_name", className: 'text-left', width: '200px' },
+                            { title: "Oprt. Id", data: "location_type_id", name: "location_type_id", className: 'text-left', width: '50px' },
+                            { title: "Oprt. Area", data: "location_type", name: "location_type", className: 'text-left', width: '200px' },
+                            { title: "KM", data: "km", name: "km", className: 'text-right', width: '50px' },
+                            { title: "HM", data: "hm", name: "hm", className: 'text-right', width: '50px' },
+                            { title: "Description", data: "description", name: "description", className: 'text-left', width: '200px' },
+                            { title: "Action", "width": "50px" }
+                        ],
+                        columnDefs: [
+                            {
+                                render: function (data, type, full, meta) {
+                                    return '<a href="#" data-toggle="tooltip" title="Edit" onclick="return ShowFormSetupFleet(\'' + full.fleet_id + '\',\'' + full.fleet_name + '\',\'' + full.description + '\',\'' + full.km + '\',\'' + full.hm + '\',\'' + full.location_type_id + '\',\'' + full.location_type + '\')"><i class="fa fa-edit" style="color:blue;font-size:16px"></i></a> ' +
+                                        '<a href="#" data-toggle="tooltip" title="Delete" onclick="DeleteFleet(\''+ full.fleet_id +'\')"><i class="fa fa-times-circle" style="color:red;font-size:16px"></i></a>';
+
+                                },
+                                targets: 7
+                            },
+                        ],
+
+                        dom: 'Brtip',
+                        "pageLength": 10,
+                        "processing": true,
+                        "order": [[0, "Desc"]],
+                        "language":
+                        {
+                            "loadingRecords": "<p style='margin-left:-100px;'> Data Not Found </p>",////&nbsp;
+                            "processing": "<img style='height:25px;width:25px;' src='../img/preloader.gif'>please wait... </img>",//"<img style='margin-left:-300px;' src='/img/loading.gif' />"
+                        },
+                        buttons: [
+                            {
+                                "text": 'Add New',
+                                "className": 'Myclass',
+                                action: function (e, dt, node, config) {
+                                    ShowFormSetupFleet(node.no_terima);
+                                }
+                            },
+                            {
+                                "text": 'Get Data Fleet',
+                                "className": 'Myclass',
+                                action: function (e, dt, node, config) {
+                                    ShowFormGetFleet();
+                                }
+                            }
+                        ]
+                    });
+
+                    $('#TblDataSetupVehicle thead tr').clone(true).appendTo('#TblDataSetupVehicle thead');
+
+                    $('#TblDataSetupVehicle thead tr:eq(1) th').each(function () {
+                        var title = $(this).text();
+                        if (title != "Action") {
+                            $(this).html('<input type="text" style="width:100%;" class="search" placeholder="search ' + title + '" />');
+                        }
+                        else {
+                            $(this).html('<label></label>');
+                        }
+
+                    });
+
+                    $('#TblDataSetupVehicle thead').on('keyup', ".search", function () {
+                        table
+                            .column($(this).parent().index())
+                            .search(this.value)
+                            .draw();
+                    });
+
+                    // Apply the search
+                    table.columns().every(function () {
+                        var that = this;
+                        $('input', this.header()).on('keyup change clear', function () {
+                            if (that.search() !== this.value) {
+                                that
+                                    .search(this.value)
+                                    .draw();
+                            }
+                        });
+                    });
+                }
+            },
+            error: function (xhr) {
+               
+                 var path = window.location.pathname;
+                 alert("Error : Session Timeout. Please Log In again");
+                 window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+            }
+        })
+
+
+       
+
+    }
+
+
+    var fleetId;
+    function ShowFormSetupFleet(fleet_id,fleet_name,description,KM,HM,location_type_id,location_type) {
+       
+        if (fleet_id == undefined) {
+            dataDetailVehicle = [];
+            $('.modal-title').text('Add New Fleet');
+        
+
+            $('#txtFleetId_SetupFleet').val("");
+            $('#txtFleetName_SetupFleet').val("");
+            $('#txtFleetDescription_SetupFleet').val("");
+            $('#cboLocationType').val("0");
+
+            $('#formSetupVehicleDetail').collapse("show");
+            document.getElementById("txtFleetId_SetupFleet").disabled = false;
+            document.getElementById('btnAdd').style.visibility = 'visible';
+            document.getElementById('btnAddClose').style.visibility = 'visible';
+            document.getElementById('btnUpdate').style.visibility = 'hidden';
+  
+            createDataTableVehicle();
+        } else {
+
+            dataDetailVehicle = [];
+
+                fleetId = fleet_id;
+                $('#txtFleetId_SetupFleet').val(fleet_id);
+                $('#txtFleetName_SetupFleet').val(fleet_name);
+                $('#cboLocationType').val(location_type_id);
+                $('#txtFleetDescription_SetupFleet').val(description);
+
+            loaddataToArray();
+            $('#formSetupVehicleDetail').collapse("show");
+            document.getElementById("txtFleetId_SetupFleet").disabled = true;
+            $('.modal-title').text('Setup Fleet');
+
+            document.getElementById('btnAdd').style.visibility = 'hidden';
+            document.getElementById('btnAddClose').style.visibility = 'hidden';
+            document.getElementById('btnUpdate').style.visibility = 'visible';
+        }
+
+        $('#SetupVehicleModal').modal('show');
+
+      
+    }
+
+    function ShowFormGetFleet() {
+        $('.modal-title').text('Get Fleet From FDS');
+        dataFleetFromFDS = [];
+        $('#fleet_id').val("");
+        createDataFleetFromFDS();
+        $('#SetupGetFleet').modal('show');
+    }
+
+    var popupAddVehicle;
+    function showAddVehicle() {
+    
+        let formDiv = $('<div/>');
+            $.get('@Url.Action("AddVehicle","Master")').done((response)=> {
+                formDiv.html(response);
+                popupAddVehicle = formDiv.dialog({
+                    autoOpen: true,
+                    resizable: false,
+                    title: 'Add Vehicle',
+                    height: 500,
+                    width: 600,
+                    close: () => {
+                        popupAddVehicle.dialog('destroy').remove();
+                    }
+                });
+            });
+    }
+
+    function cekPosition(position){
+        var count = 0;
+        for (i = 0; i < dataDetailVehicle.length; i++) {
+            if (dataDetailVehicle[i].position.toString() == position) {
+                count = 1;
+            }
+        }
+        return count;
+    }
+
+    function cekVhcId(vhc_id) {
+         var count = 0;
+        for (i = 0; i < dataDetailVehicle.length; i++) {
+            if (dataDetailVehicle[i].vehicle_id == vhc_id) {
+                count = 1;
+            }
+        }
+        return count;
+    }
+
+    function addVehicleToList(data) {
+
+        var rowCount = $('#TblEntryDetailSetupVehicle').DataTable().data().count() + 1;
+
+        var total = 0;
+        var index = 0;
+         if (data) {
+             var vehicleId = data.vehicle_id;
+             var vehicleName = data.vehicle_name;
+             var vehicleAxisType = data.axis_type;
+             var vehicleSort = data.sort;
+             var vehicleRfid = data.rfid;
+             $('#TblEntryDetailSetupVehicle').DataTable().row.add([index, vehicleId, vehicleName, vehicleAxisType, vehicleRfid]).draw(false);
+        }
+         else {
+             var vehicleId = $('#inputVehicleId').val();
+             var vehicleName = $('#inputVehicleName').val();
+             var vehicleAxisType = $('#cboAxis').val();
+             var vehicleSort = $('#inputVehicleSort').val();
+             var vehicleRfid = $('#inputRfid').val();
+             
+
+             if (cekPosition(vehicleSort) == 1) {
+                 alertify.warningAlert("Vehicle in this position already exist, choose other position");
+             } else if (cekVhcId(vehicleId) == 1) {
+                 alertify.warningAlert("Vehicle already exist");
+             } else {
+                 dataDetailVehicle.push({ 'vehicle_id': vehicleId, 'vehicle_name': vehicleName, 'axis_type': vehicleAxisType, 'position': vehicleSort, 'rfid': vehicleRfid});
+                 popupAddVehicle.dialog('destroy').remove();
+                 $('#TblEntryDetailSetupVehicle').DataTable().row.add([index, vehicleId, vehicleName, vehicleAxisType, vehicleRfid]).draw(false);
+             }
+        }
+
+       
+
+        console.log(dataDetailVehicle);
+    }
+
+
+    function createDataTableVehicle() {
+         if ($.fn.DataTable.isDataTable('#TblEntryDetailSetupVehicle') == true) {
+            $('#TblEntryDetailSetupVehicle').DataTable().clear().destroy();
+            $('#TblEntryDetailSetupVehicle thead').empty();
+            document.getElementById("TblEntryDetailSetupVehicle").deleteTFoot();
+         }
+
+
+        var table = $('#TblEntryDetailSetupVehicle').DataTable({
+         
+            "columns": [
+                
+                { title: "Sort", name: "sort", className: 'text-right' },
+                { title: "Vehicle Id",name: "vehicle_id", width: '100px' },
+                { title: "Vehicle Name",name: "vehicle_name", className: 'text-left', width: '200px' },
+                { title: "Axis Type",name: "axis_type", className: 'text-right', width: '100px' },
+                { title: "RFID",name: "rfid", className: 'text-left', width: '200px' },
+                { title: "Action", name: "Action", className: 'text-center', width: '50px' },
+            ],
+            columnDefs: [
+                {
+                    render: function (data, type, full, meta) {
+                        return '<a href="#" data-toggle="tooltip" title="Delete" onclick="DeleteVehicle(\'' + full[1] + '\')"><i class="fa fa-times-circle" style="color:red;font-size:16px"></i></a>';
+                            //'<a href="#" data-toggle="tooltip" title="Swap" onclick="SwapVehiclePosition(\'' + full[1] + '\')"><i  style="margin-left:3px;color:blue;font-size:16px">&uarr;&darr;</i></a>';
+
+                    },
+                    targets: 5
+                },
+                {
+                    render: function (data, type, row, meta) {
+                        return meta.row + meta.settings._iDisplayStart + 1;
+                    },
+                    targets: 0
+                }
+            ],
+
+            dom: 'Brtip',
+            "pageLength": 5,
+            "processing": true,
+            "language":
+            {
+                "loadingRecords": "<p style='margin-left:-100px;'> Data Not Found </p>",
+                "processing": "<img style='height:25px;width:25px;' src='../img/preloader.gif'>please wait... </img>",
+            },
+            buttons: [
+                {
+                    "text": 'Add Vehicle',
+                    "className": 'Myclass',
+                    action: function (e, dt, node, config) {
+                       showAddVehicle();
+                    }
+                },
+            ]
+        });
+
+        $('#TblEntryDetailSetupVehicle thead tr').clone(true).appendTo('#TblEntryDetailSetupVehicle thead');
+
+        $('#TblEntryDetailSetupVehicle thead tr:eq(1) th').each(function () {
+            var title = $(this).text();
+            if (title != "Action") {
+                $(this).html('<input type="text" style="width:100%;" class="search" placeholder="search ' + title + '" />');
+            }
+            else {
+                $(this).html('<label></label>');
+            }
+
+        });
+
+        $('#TblEntryDetailSetupVehicle thead').on('keyup', ".search", function () {
+            table
+                .column($(this).parent().index())
+                .search(this.value)
+                .draw();
+        });
+
+        // Apply the search
+        table.columns().every(function () {
+            var that = this;
+            $('input', this.header()).on('keyup change clear', function () {
+                if (that.search() !== this.value) {
+                    that
+                        .search(this.value)
+                        .draw();
+                }
+            });
+        });
+    }
+
+    function createDataFleetFromFDS() {
+         if ($.fn.DataTable.isDataTable('#TblGetFleet') == true) {
+            $('#TblGetFleet').DataTable().clear().destroy();
+            $('#TblGetFleet thead').empty();
+            document.getElementById("TblGetFleet").deleteTFoot();
+         }
+
+
+        var table = $('#TblGetFleet').DataTable({
+            "data": dataFleetFromFDS,
+            "columns": [
+                
+                { title: "Sort", name: "sort",data:"sort", className: 'text-center', "width":"10%" },
+                { title: "Vehicle Name", data: "vehicle_id", name: "vehicle_id", className: 'text-left', "width": "45%" },
+                {
+                    title: "Axis Type", data: "axis_type", name: "vehicle_id", className: 'text-left', "width": "45%",
+                    render: function (data, type, row) {
+                        var axis_name = '-';
+                        for (i = 0; i < dataAxisType.length; i++) {
+                            if (dataAxisType[i].axis_type == row.axis_type) {
+                                axis_name = dataAxisType[i].axis_type_name;
+                            }
+                        }
+
+                        return axis_name;
+                    }
+                },
+               
+            ],
+            columnDefs: [
+                //{
+                //    render: function (data, type, full, meta) {
+                //        return '<a href="#" data-toggle="tooltip" title="Delete" onclick="DeleteVehicle(\'' + full[1] + '\')"><i class="fa fa-times-circle" style="color:red;font-size:16px"></i></a>';
+                //            //'<a href="#" data-toggle="tooltip" title="Swap" onclick="SwapVehiclePosition(\'' + full[1] + '\')"><i  style="margin-left:3px;color:blue;font-size:16px">&uarr;&darr;</i></a>';
+
+                //    },
+                //    targets: 5
+                //},
+                //{
+                //    render: function (data, type, row, meta) {
+                //        return meta.row + meta.settings._iDisplayStart + 1;
+                //    },
+                //    targets: 0
+                //}
+            ],
+
+            dom: 'Brtip',
+            "pageLength": 5,
+            "processing": true,
+            "language":
+            {
+                "loadingRecords": "<p style='margin-left:-100px;'> Data Not Found </p>",
+                "processing": "<img style='height:25px;width:25px;' src='../img/preloader.gif'>please wait... </img>",
+            },
+            buttons: [
+                //{
+                //    "text": 'Add Vehicle',
+                //    "className": 'Myclass',
+                //    action: function (e, dt, node, config) {
+                //       showAddVehicle();
+                //    }
+                //},
+            ]
+        });
+
+        
+    }
+
+    function loaddataToArray() {
+        dataDetailVehicle = [];
+        createDataTableVehicle();
+        $.ajax({
+            url:"@ViewBag.pathDir"+"Master/getVehicleOnFleet",
+            data: { fleet_id: fleetId },
+            dataType: "json",
+            type: "GET",
+            contentType: 'application/json; charset=utf-8',
+            success: function (rslt) {
+                if (rslt.Flag == false) {
+                    var path = window.location.pathname;
+                    alert(rslt.Message + " Please Log In again");
+                   window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+                } else {
+                        for (var i = 0; i < rslt.data.length; i++) {
+                            var data = rslt.data[i];
+                            var vehicleId = data.vehicle_id;
+                            var vehicleName = data.vehicle_name;
+                            var vehicleAxisType = data.axis_type;
+                            var vehicleSort = data.sort;
+                            var vehicleRfid = data.rfid;
+                            //var position = data.position;
+                            var inputData = { 'vehicle_id': vehicleId, 'vehicle_name': vehicleName, 'axis_type': vehicleAxisType, 'position': vehicleSort, 'rfid': vehicleRfid};
+
+                            dataDetailVehicle.push(inputData);
+                        }
+
+
+                        for (var j = 0; j < dataDetailVehicle.length; j++) {
+
+                                addVehicleToList(dataDetailVehicle[j]);
+
+                        }
+                }
+            },
+            error: function () {
+                 var path = window.location.pathname;
+                 alert("Error : Session Timeout. Please Log In again");
+                 window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+            }
+        });
+        
+    }
+
+
+    function clearTextInput()
+    {
+        $("#txtVehicleIdInput").val("");
+        $("#txtVehicleNameInput").val("");
+        $("#txtBrandNameInput").val("");
+        $("#txtQtyInput").val("");
+        $("#txtBrandInput").val("");
+        $("#txtPriceInput").val("");
+
+    }
+
+    function validateDetailSetupVehicle() {
+        var x = true;
+
+        if ($('#txtVehicleIdInput').val() == "") {
+            alertify.warningAlert('Vehicle Code cannot empty');
+            x = false;
+
+        } else if ($('#txtVehicleNameInput').val() == "") {
+            alertify.warningAlert('Vehicle cannot empty');
+            x = false;
+
+        } else if ($('#txtQtyInput').val() == "") {
+            alertify.warningAlert('Qty cannot empty');
+            x = false;
+        } else if ($('#txtPriceInput').val() == "") {
+            alertify.warningAlert('Price cannot empty');
+            x = false;
+
+        }
+        return x;
+    };
+
+
+    function validateDataVehicle() {
+        var x = true;
+        if (dataDetailVehicle.length == 0) {
+            alertify.warningAlert('Vehicle List is Empty');
+            x = false
+        }
+        return x;
+    }
+
+    function validateSetupVehicle() {
+        var x= true;
+
+        if ($('#txtFleetId_SetupFleet').val() == "") {
+            alertify.warningAlert('Fleet Id cannot empty');
+            x = false;
+        } else if ($('#txtFleetName_SetupFleet').val() == "") {
+            alertify.warningAlert('Fleet Name cannot empty');
+            x = false;
+
+        } else if ($('#cboLocationType').val() == "0") {
+            alertify.warningAlert('Select operation area');
+            x = false;
+
+        }  
+        return x;
+    };
+
+    
+    function SaveSetupVehicle(t) {
+        var res = validateSetupVehicle();
+        var res2 = validateDataVehicle();
+
+        if (res == false || res2 == false) {
+            return false;
+        }
+        var body = {
+            fleet_id: $('#txtFleetId_SetupFleet').val(),
+            fleet_name: $('#txtFleetName_SetupFleet').val(),
+            location_type_id : $('#cboLocationType').val(),
+            description: $('#txtFleetDescription_SetupFleet').val(),
+            data: JSON.stringify(dataDetailVehicle),
+        };
+        var headers = { __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() };
+
+        showLoading();    
+        $.ajax({
+            headers: headers,
+            url: "@ViewBag.pathDir"+"Master/setMasterFleet",
+            data: JSON.stringify(body),
+            type: "POST",
+            contentType: "application/json;charset=utf-8",
+            dataType: "json",
+            success: function (res) {
+                if (res.result == false) {
+                    closeLoad();
+                    alertify.warningAlert("Add Fleet failed. Check your input.");
+                } else {
+                    if (t == true) {
+                        closeLoad();
+                        alertify.successAlert("Setup Fleet successfully.");
+                        LoaddataSetupFleet();
+                        
+                    } else {
+                        closeLoad();
+                        alertify.successAlert("Update Fleet successfully.");
+                        LoaddataSetupFleet();
+                        
+                    }
+                }
+            },
+            error: function (errormessage) {
+                closeLoad();
+                var path = window.location.pathname;
+                 alert("Error : Session Timeout. Please Log In again");
+                 window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+            }
+        });
+
+
+    }
+
+    function SaveFleetFromFDS() {
+        if (status == '0') {
+            alertify.confirm('Add New Fleet From FDS', 'are you sure want to add this Fleet ?', function () {
+                var body = {
+                    fleet_id: dataFleetFromFDS[0].vehicle_id,
+                    fleet_name: dataFleetFromFDS[0].vehicle_id,
+                    location_type_id: "1",
+                    description: dataFleetFromFDS[0].vehicle_id + " from FDS",
+                    data: JSON.stringify(dataFleetFromFDS),
+                    data_old: JSON.stringify(dataOldFleetFromFDS)
+                };
+
+                var headers = { __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() };
+
+                showLoading();
+                $.ajax({
+                    headers: headers,
+                    url: "@ViewBag.pathDir" + "Master/setFleetFromFds",
+                    data: JSON.stringify(body),
+                    type: "POST",
+                    contentType: "application/json;charset=utf-8",
+                    dataType: "json",
+                    success: function (res) {
+                        if (res.flag == false) {
+                            closeLoad();
+                            alertify.warningAlert("Add Fleet failed");
+                        } else {
+                            closeLoad();
+                            $('#fleet_id').val("");
+                            dataFleetFromFDS = [];
+                            createDataFleetFromFDS();
+                            alertify.successAlert("Add New Fleet from FDS successfully.");
+                            LoaddataSetupFleet();
+
+                        }
+                    },
+                    error: function (errormessage) {
+                        closeLoad();
+                        var path = window.location.pathname;
+                        alert("Error : Session Timeout. Please Log In again");
+                        window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+                    }
+                });
+
+            }, function () {
+                alertify.error('Cancel')
+            });
+        } else if (status == '1') {
+            alertify.warningAlert('Fleet Exists', 'Fleet already exists with the same type');
+        } else if (status == '3') {
+            alertify.confirm('Update/Change Fleet from FDS', 'Are you sure want to update/ change the current fleet on the DTS with this fleet from FDS ? <br> If you update/ change the current fleet on the DTS, it will be replaced or lost', function () {
+                var body = {
+                    fleet_id: dataFleetFromFDS[0].vehicle_id,
+                    fleet_name: dataFleetFromFDS[0].vehicle_id,
+                    location_type_id: "1",
+                    description: dataFleetFromFDS[0].vehicle_id + " from FDS",
+                    data: JSON.stringify(dataFleetFromFDS),
+                    data_old: JSON.stringify(dataOldFleetFromFDS)
+                };
+
+                console.log(JSON.stringify(body));
+
+                var headers = { __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() };
+
+                showLoading();
+                $.ajax({
+                    headers: headers,
+                    url: "@ViewBag.pathDir" + "Master/setVehicleChangeFromFds",
+                    data: JSON.stringify(body),
+                    type: "POST",
+                    contentType: "application/json;charset=utf-8",
+                    dataType: "json",
+                    success: function (res) {
+                        if (res.flag == false) {
+                            closeLoad();
+                            alertify.warningAlert("Update/Change Fleet failed");
+                        } else {
+                            closeLoad();
+                            $('#fleet_id').val("");
+                            dataFleetFromFDS = [];
+                            createDataFleetFromFDS();
+                            alertify.successAlert("Update/Change Fleet from FDS successfully.");
+                            LoaddataSetupFleet();
+
+                        }
+                    },
+                    error: function (errormessage) {
+                        closeLoad();
+                        var path = window.location.pathname;
+                        alert("Error : Session Timeout. Please Log In again");
+                        window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+                    }
+                });
+            }, function () {
+                alertify.error('Cancel')
+            });
+        } else if (status == '4') {
+            alertify.warningAlert(message);
+            //alertify.warningAlert("1. Warning One <br> 2. Warning Two");
+        } else {
+            alertify.warningAlert('Error on the server');
+        }
+    }
+
+    function DeleteFleet(fleet_id) {
+        alertify.confirm('Delete Fleet', 'are you sure want to delete this Fleet, Id: ' + fleet_id + ' ?', function () {
+            $.ajax({
+                url: "@ViewBag.pathDir"+"Master/DelFleet",
+                data: { fleet_id: fleet_id },
+                type: "POST",
+                dataType: "json",
+                success: function (res) {
+                    if (res.result == false) {
+                        alertify.warningAlert(res.message);
+                    } else {
+                        alertify.successAlert(res.message);
+                        LoaddataSetupFleet()
+                       
+                    }
+                },
+                error: function (errormessage) {   
+                 var path = window.location.pathname;
+                 alert("Error : Session Timeout. Please Log In again");
+                 window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+                }
+            });
+        }, function () {
+            alertify.error('Cancel')
+        });
+    }
+
+    function DeleteVehicle(vehicle_id, setup_no) {
+        
+        alertify.confirm('Delete Vehicle', 'are you sure delete this vehicle Id: ' + vehicle_id + ' from this Fleet?', function () {
+            for (var i = 0; i < dataDetailVehicle.length; i++) {
+                
+                if (dataDetailVehicle[i].vehicle_id == vehicle_id) {
+                    const index = dataDetailVehicle.indexOf(dataDetailVehicle[i]);
+            
+                    vehicleId = dataDetailVehicle[i].vehicle_id;
+                
+                    if (index > -1) {
+                        if (fleetId == undefined || fleetId == "") {
+                            
+                            dataDetailVehicle.splice(index, 1);
+                        } else {
+                            
+                              dataDetailVehicle.splice(index, 1);
+                                $.ajax({
+                                    url: "@ViewBag.pathDir"+"Master/DelVehicleOnFleet",
+                                    data: { fleet_id: fleetId, vehicle_id: vehicle_id },
+                                    type: "POST",
+                                    success: function (res) {
+                                        
+                                        var respon = JSON.parse(res);
+                                        if (respon.flag == false) {
+                                            
+                                            alertify.warningAlert(respon.message);
+                                        } else {
+                                            alertify.successAlert(respon.message);
+                                        }
+                                    },
+                                    error: function (errormessage) {
+                                         var path = window.location.pathname;
+                                         alert("Error : Session Timeout. Please Log In again");
+                                         window.location.href = '@Url.Action("Login", "Account")' + '?returnUrl=' + path;
+                                    }
+                                });
+                        }
+                    }
+                }
+            }
+            createDataTableVehicle();
+           
+            for (var j = 0; j < dataDetailVehicle.length; j++) {
+                $('#TblEntryDetailSetupVehicle').DataTable().row.add([dataDetailVehicle.length + 1, dataDetailVehicle[j].vehicle_id, dataDetailVehicle[j].vehicle_name, dataDetailVehicle[j].axis_type, dataDetailVehicle[j].rfid]).draw(false);
+            }
+        }, function () {
+            alertify.error('Cancel')
+        });
+    }
+
+   
+
+
+    function setUserLog(activity) {
+        $.ajax({
+            url: "@ViewBag.pathDir"+"Master/setUserLog",
+            type: "GET",
+            data: { activity: activity },
+            contentType: "application/json;charset=utf-8",
+            dataType: "json",
+            success: function (res) {
+
+                if (res.Flag == false) {
+                    console.log("fail -> " + res.Flag);
+                } else {
+                    console.log("success ->" + res.Flag);
+                }
+            },
+            error: function (errormessage) {
+                console.log('error');
+            }
+        });
+    }
+
+</script>
+

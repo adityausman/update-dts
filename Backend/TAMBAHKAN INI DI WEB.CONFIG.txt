@@ -1,0 +1,15 @@
+PETUNJUK!!!
+
+TAMBAHKAN INI!!!
+<!-- __________________ INI __________________ -->
+<add key="url_updateprimover_fds" value="[URL_ENDPOINT_API_UPDATE_FDS]" />
+<add key="url_getlastkmhm_tms" value="[URL_ENDPOINT_API_GET_LAST_KM_HM]" />
+<add key="static_token_tms" value="7B2xa14uA4kWAEE7Rsi60YM3zLjOzGLtegLVYXPGCJlobDkojzEbhwy7Su9C" />
+<!-- __________________ INI __________________ -->
+
+
+DI BAWAH BARIS KODE
+<add key="static_token_fds" value="7B2xa14uA4kWAEE7Rsi60YM3zLjOzGLtegLvYxPGCJlobDkojzEbhwy7Su9CBR" />
+
+
+**SESUAIKAN url_updateprimover_fds & url_getlastkmhm_tms-nya. Terima Kasih :)
