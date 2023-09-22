@@ -1,5 +1,5 @@
-1. Tambah fitur integrasi GET data dari FDS di form master Fleet
-2. Tambah fitur integrasi PUT update data ke FDS di form master Fleet
+1. Tambah fitur integrasi PUT update data ke FDS di form master Fleet
+2. Tambah fitur integrasi GET data last km hm di menu Odometer Integration
 
 
 Salin file di atas berdasarkan folder di dalam projectnya
